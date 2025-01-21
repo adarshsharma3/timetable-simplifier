@@ -200,6 +200,8 @@ const FileUploadForm = () => {
             Time Table
             <br />
             Simplifier
+            <br/>
+            128
           </h1>
         </div>
       </div>

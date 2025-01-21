@@ -6,7 +6,8 @@ const ResultPage = () => {
   const result1 = state?.result;
   const timetable = state?.timetable;
   const [loading, setLoading] = useState(true);
-  // console.table(result1);
+  const [selectedClass, setSelectedClass] = useState(null); // State to hold selected class info
+  const [isModalOpen, setIsModalOpen] = useState(false); // State to control modal visibility
 
   const days = [
     "Monday",
@@ -21,20 +22,15 @@ const ResultPage = () => {
     if (timetable) {
       setLoading(false);
     }
-    console.table(result1);
   }, [timetable]);
 
-  // Updated parseClassInfo to extract subject name from timetable
   const parseClassInfo = (info) => {
     if (info === null || !info || info === "NaN" || Number.isNaN(info)) {
-      return { subject: "", room: "", fullInfo: "" }; // Return empty values if info is invalid
+      return { subject: "", room: "", fullInfo: "" };
     }
 
-    // Extract the code from the info string
     const codeMatch = info.match(/\(([^)]+)\)/);
     const code = codeMatch ? codeMatch[1] : "";
-
-    // Find the subject name using the code
     const subject = Object.keys(timetable).find(key => timetable[key] === code) || "";
 
     return { subject, room: info, fullInfo: info };
@@ -62,14 +58,28 @@ const ResultPage = () => {
     key !== "Day" && (key.includes("AM") || key.includes("PM"))
   );
 
-  // Group classes by day and time
-  const groupedClasses = validResult.reduce((acc, daySchedule, dayIndex) => {
-    const day = days[dayIndex % 6]; // Use modulo to loop through days
+  // Custom order for time slots
+  
+const timeOrder = [
+  "8:00 - 8:50 AM", "9 - 9:50 AM", "10:00-10:50 AM", 
+  "11:00-11:50 AM", "12:00 - 12:50 PM", "1:00 PM - 1:50PM", 
+  "2:00 PM - 2:50 PM", "3:00 PM - 3 :50 PM", "4:00 PM -4:50 PM", 
+  "5:00 PM -5:50 PM"
+];
 
-    timeSlots.forEach(timeSlot => {
+  // Sort time slots based on custom order
+  const sortedTimeSlots = timeSlots.sort((a, b) => {
+    const indexA = timeOrder.indexOf(a.trim());
+    const indexB = timeOrder.indexOf(b.trim());
+    return indexA - indexB; // Sort based on the index in timeOrder
+  });
+
+  const groupedClasses = validResult.reduce((acc, daySchedule, dayIndex) => {
+    const day = days[dayIndex % 6];
+
+    sortedTimeSlots.forEach(timeSlot => {
       const classInfo = parseClassInfo(daySchedule[timeSlot]);
       if (classInfo.subject) {
-        // If the day and time slot already exist, push the class info
         if (!acc[day]) {
           acc[day] = {};
         }
@@ -83,40 +93,85 @@ const ResultPage = () => {
     return acc;
   }, {});
 
+  // Function to handle class click
+  const handleClassClick = (classInfo) => {
+    setSelectedClass(classInfo); // Set the selected class info
+    setIsModalOpen(true); // Open the modal
+  };
+
+  // Function to close the modal
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedClass(null); // Clear the selected class info when closing the modal
+  };
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-6">
-      <div className="bg-[#E2F1E7] p-8 rounded-lg shadow-lg w-full overflow-x-auto">
+      <div className="min-h-screen bg-[#E2F1E7] p-8 rounded-lg shadow-lg w-full overflow-x-auto">
         <h2 className="text-2xl text-center font-semibold mb-6">Weekly Timetable</h2>
-        <table className="min-w-full table-auto border-collapse">
-          <thead>
-            <tr className="bg-green-50">
-              <th className="px-4 py-2 border border-green-200">Day</th>
-              <th className="px-4 py-2 border border-green-200">Time</th>
-              <th className="px-4 py-2 border border-green-200">Class Details</th>
-            </tr>
-          </thead>
-          <tbody>
-            {days.map(day => (
-              Object.keys(groupedClasses[day] || {}).map((timeSlot, timeIndex) => (
-                <tr key={`${day}-${timeSlot}`} className="border-b border-green-100">
-                  <td className="px-4 py-2 font-medium border border-green-200 bg-green-50">
-                    {timeIndex === 0 ? day : ""} {/* Show day only for the first time slot */}
-                  </td>
-                  <td className="px-4 py-2 border border-green-200">
-                    {timeSlot}
-                  </td>
-                  <td className="px-4 py-2 border border-green-200">
-                    {groupedClasses[day][timeSlot].map((slot, index) => (
-                      <div key={index} className="mb-1 p-2 bg-white rounded shadow-sm">
-                        {slot.subject} - {slot.fullInfo}
-                      </div>
-                    ))}
-                  </td>
+        
+        {/* Gantt Chart Representation */}
+        <div className="overflow-x-auto">
+          <table className="min-w-full table-auto border-collapse" style={{ tableLayout: 'fixed' }}>
+            <thead>
+              <tr className="bg-green-50">
+                <th className="px-6 py-4 border border-green-200">Day</th>
+                {sortedTimeSlots.map((timeSlot) => (
+                  <th key={timeSlot} className="px-6 py-4 border border-green-200" style={{ minWidth: '150px' }}>{timeSlot}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {days.map(day => (
+                <tr key={day} className="border-b border-green-100">
+                  <td className="px-8 py-5 font-medium border border-green-200 bg-green-50">{day}</td>
+                  {sortedTimeSlots.map((timeSlot) => {
+                    const classes = groupedClasses[day]?.[timeSlot] || [];
+                    return (
+                      <td key={timeSlot} className="border border-green-200 relative">
+                        {classes.map((slot, index) => (
+                          <div 
+                            key={index} 
+                            className="absolute bg-blue-200 rounded p-1 cursor-pointer" 
+                            style={{
+                              left: 0,
+                              top: index * 20, // Adjust spacing for multiple classes
+                              width: '100%',
+                              height: 'auto', // Allow height to adjust based on content
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis'
+                            }}
+                            onClick={() => handleClassClick(slot)} // Add click handler
+                          >
+                            {slot.subject} - {slot.fullInfo}
+                          </div>
+                        ))}
+                      </td>
+                    );
+                  })}
                 </tr>
-              ))
-            ))}
-          </tbody>
-        </table>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Modal for displaying selected class information */}
+        {isModalOpen && (
+          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+            <div className="bg-white rounded-lg p-6 shadow-lg">
+              <h3 className="font-semibold">Class Details:</h3>
+              <p><strong>Subject:</strong> {selectedClass.subject}</p>
+              <p><strong>Location & Teacher</strong>: {selectedClass.fullInfo}</p>
+              <button 
+                className="mt-4 px-4 py-2 bg-blue-500 text-white rounded" 
+                onClick={closeModal}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

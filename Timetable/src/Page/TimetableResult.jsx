@@ -33,6 +33,7 @@ const TimetableResult = () => {
   // Function to handle the submit action
   const handleSubmit = async () => {
     console.log(selectedItems);
+    console.table(consolidated);
     if (selectedItems.length === 0) {
       alert("No courses selected.");
     } else {
