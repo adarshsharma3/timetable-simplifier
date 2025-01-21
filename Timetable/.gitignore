@@ -25,3 +25,7 @@ dist-ssr
 
 .flaskenv
 __pycache__
+venv/
+
+uploads2/
+uploads/

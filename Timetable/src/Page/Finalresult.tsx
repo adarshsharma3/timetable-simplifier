@@ -2,31 +2,43 @@ import React, { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 
 const ResultPage = () => {
-  const { state } = useLocation(); // Retrieve the state passed from the previous page
-  const result = state?.result; // Get the result data
-  const [subjectMapping, setSubjectMapping] = useState({}); // To store subject code to subject name mapping
-  const [loading, setLoading] = useState(true); // Loading state
-   console.log(result);
-  useEffect(() => {
-    const fetchSubjectMapping = async () => {
-      try {
-        
-        const response = await fetch("http://127.0.0.1:5000/get_cleaned_subject_data");
-        if (response.ok) {
-          const data = await response.json();
-          setSubjectMapping(data); // Assuming the API returns a JSON object
-        } else {
-          console.error("Failed to fetch subject mapping");
-        }
-      } catch (error) {
-        console.error("Error fetching subject mapping:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const { state } = useLocation();
+  const result1 = state?.result;
+  const timetable = state?.timetable;
+  const [loading, setLoading] = useState(true);
+  // console.table(result1);
 
-    fetchSubjectMapping();
-  }, []);
+  const days = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+  ];
+
+  useEffect(() => {
+    if (timetable) {
+      setLoading(false);
+    }
+    console.table(result1);
+  }, [timetable]);
+
+  // Updated parseClassInfo to extract subject name from timetable
+  const parseClassInfo = (info) => {
+    if (info === null || !info || info === "NaN" || Number.isNaN(info)) {
+      return { subject: "", room: "", fullInfo: "" }; // Return empty values if info is invalid
+    }
+
+    // Extract the code from the info string
+    const codeMatch = info.match(/\(([^)]+)\)/);
+    const code = codeMatch ? codeMatch[1] : "";
+
+    // Find the subject name using the code
+    const subject = Object.keys(timetable).find(key => timetable[key] === code) || "";
+
+    return { subject, room: info, fullInfo: info };
+  };
 
   if (loading) {
     return (
@@ -36,40 +48,75 @@ const ResultPage = () => {
     );
   }
 
+  const validResult = Array.isArray(result1) ? result1 : [];
+  if (validResult.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 p-6">
+        <p>Array is having problem.</p>
+      </div>
+    );
+  }
+
+  const firstEntry = validResult[0];
+  const timeSlots = Object.keys(firstEntry || {}).filter(key =>
+    key !== "Day" && (key.includes("AM") || key.includes("PM"))
+  );
+
+  // Group classes by day and time
+  const groupedClasses = validResult.reduce((acc, daySchedule, dayIndex) => {
+    const day = days[dayIndex % 6]; // Use modulo to loop through days
+
+    timeSlots.forEach(timeSlot => {
+      const classInfo = parseClassInfo(daySchedule[timeSlot]);
+      if (classInfo.subject) {
+        // If the day and time slot already exist, push the class info
+        if (!acc[day]) {
+          acc[day] = {};
+        }
+        if (!acc[day][timeSlot]) {
+          acc[day][timeSlot] = [];
+        }
+        acc[day][timeSlot].push(classInfo);
+      }
+    });
+
+    return acc;
+  }, {});
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-6">
-      <div className="bg-[#E2F1E7] p-8 rounded-lg shadow-lg w-full">
-        <h2 className="text-2xl text-center font-semibold mb-6">Filtered Timetable</h2>
-        {/* Display result */}
-        {result ? (
-          <div className="space-y-4">
-            <table className="min-w-full table-auto">
-              <thead>
-                <tr>
-                  <th className="px-4 py-2">Batch</th>
-                  <th className="px-4 py-2">Subject</th> {/* Updated column name */}
-                  <th className="px-4 py-2">Subject Code</th>
-                  <th className="px-4 py-2">Room</th>
+      <div className="bg-[#E2F1E7] p-8 rounded-lg shadow-lg w-full overflow-x-auto">
+        <h2 className="text-2xl text-center font-semibold mb-6">Weekly Timetable</h2>
+        <table className="min-w-full table-auto border-collapse">
+          <thead>
+            <tr className="bg-green-50">
+              <th className="px-4 py-2 border border-green-200">Day</th>
+              <th className="px-4 py-2 border border-green-200">Time</th>
+              <th className="px-4 py-2 border border-green-200">Class Details</th>
+            </tr>
+          </thead>
+          <tbody>
+            {days.map(day => (
+              Object.keys(groupedClasses[day] || {}).map((timeSlot, timeIndex) => (
+                <tr key={`${day}-${timeSlot}`} className="border-b border-green-100">
+                  <td className="px-4 py-2 font-medium border border-green-200 bg-green-50">
+                    {timeIndex === 0 ? day : ""} {/* Show day only for the first time slot */}
+                  </td>
+                  <td className="px-4 py-2 border border-green-200">
+                    {timeSlot}
+                  </td>
+                  <td className="px-4 py-2 border border-green-200">
+                    {groupedClasses[day][timeSlot].map((slot, index) => (
+                      <div key={index} className="mb-1 p-2 bg-white rounded shadow-sm">
+                        {slot.subject} - {slot.fullInfo}
+                      </div>
+                    ))}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {result.map((row, index) => {
-                  const subjectName = subjectMapping[row.subject_code] || "Unknown Subject";
-                  return (
-                    <tr key={index}>
-                      <td className="px-4 py-2">{row.batch}</td>
-                      <td className="px-4 py-2">{subjectName}</td> {/* Displaying subject name */}
-                      <td className="px-4 py-2">{row.subject_code}</td>
-                      <td className="px-4 py-2">{row.room}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p>No results available.</p>
-        )}
+              ))
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

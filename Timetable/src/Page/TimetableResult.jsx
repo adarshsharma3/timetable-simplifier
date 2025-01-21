@@ -8,12 +8,17 @@ const TimetableResult = () => {
   const timetable = state?.timetable; // Get the timetable data
   const batch = state?.batch; // Get the batch information
   const consolidated = state?.consolidated;
-  const formData= state?.formData;
+  // const formData= state?.formData;
   const [selectedItems, setSelectedItems] = useState([]); // Array to hold selected course IDs
   const navigate = useNavigate(); // Hook to navigate to a different page
-
+  console.log("Full response:", timetable);
+  console.log("Full response:", consolidated);
+  
+   
   // Function to toggle the selection of a checkbox
   const handleCheckboxChange = (id) => {
+      
+ 
     setSelectedItems((prevSelected) => {
       console.log('Previous selection:', prevSelected);
       // If the course is already selected, remove it
@@ -27,19 +32,17 @@ const TimetableResult = () => {
 
   // Function to handle the submit action
   const handleSubmit = async () => {
-    console.log(selectedItems)
+    console.log(selectedItems);
     if (selectedItems.length === 0) {
       alert("No courses selected.");
     } else {
       try {
-
-
         const response = await axios.post(
           "http://127.0.0.1:5000/extract_batches",
           {
             batch: batch, // Batch information
             subject_codes: selectedItems, // Array of selected course IDs
-            consolidated: consolidated
+            consolidated: consolidated,
           },
           {
             headers: {
@@ -47,13 +50,23 @@ const TimetableResult = () => {
             },
           }
         );
-      
+  
         if (response.status === 200) {
-          console.log(response);
-          const result = response.data; // Axios automatically parses JSON
-          console.log("HII",result);
+          let result = response.data; // Axios automatically parses JSON
+
+          // Check if result is a string and contains "NaN"
+          // if (typeof result === "string") {
+          //   // Replace all occurrences of "NaN" in the string with "null"
+          //   result = result.replace(/NaN/g, 'null');
+          // }
+   // Axios automatically parses JSON
+          console.log("HII", result);
+  
+          // Store the result in localStorage
+          // localStorage.setItem("result", JSON.stringify(result));
+  
           // Navigate to a new page with the result
-          navigate("/finalresult", { state: { result } });
+          navigate("/finalresult", { state: { result, timetable, batch } });
         } else {
           alert("Error fetching data from server.");
         }
@@ -63,7 +76,7 @@ const TimetableResult = () => {
       }
     }
   };
-
+  
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-6">
       <div className="bg-[#E2F1E7] p-8 rounded-lg shadow-lg w-full">
