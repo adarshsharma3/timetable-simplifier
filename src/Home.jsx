@@ -141,7 +141,7 @@ const FileUploadForm = () => {
                     value={batch}
                     onChange={handleBatchChange}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
-                    placeholder="Enter your batch (e.g., CSE-A)"
+                    placeholder="Enter your batch (e.g., F4)"
                   />
                 </div>
 
@@ -156,7 +156,7 @@ const FileUploadForm = () => {
                     value={year}
                     onChange={handleYearChange}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
-                    placeholder="Enter year (e.g., 2024-25)"
+                    placeholder="Enter year (e.g., 1,2,3,4...)"
                   />
                 </div>
 
